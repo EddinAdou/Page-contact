@@ -1,80 +1,90 @@
 <?php
-    $firstname = $name = $email = $phone = $message = "";
-    $firstnameError = $nameError = $emailError = $phoneError = $messageError = "";
-    $isSucces = false;
-    $emailTo = "yadou471@gmail.com";
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
 
-    if ($_SERVER["REQUEST_METHOD"] == "POST")
-    {
-        $firstname = verifyInput($_POST["firstname"]);
-        $name = verifyInput($_POST["name"]);
-        $email = verifyInput($_POST["email"]);
-        $phone = verifyInput($_POST["phone"]);
-        $message = verifyInput($_POST["message"]);
-        $isSuccess = true;
-        $emailText = "";
+require 'vendor/autoload.php';
 
-        if(empty($firstname)){
-            $firstnameError = " Entrez un prénom correcte svp!";
-            $isSucces = false;
-        }
-        else{
-            $emailText .= "Firstname: $firstname\n";
-        }
-        if(empty($name)){
-            $nameError = " Entrez un nom correcte svp!";
-            $isSucces = false;
-        }
-        else{
-            $emailText .= "Name: $name\n";
-        }
-            
-        if(isEmail($email)){
-            $emailError = " Entrez un mail valide svp!";
-            $isSucces = false;
-        }
-        else{
-            $emailText .= "Email: $email\n";
-        }
-           
-        if(!isPhone($phone)){
-            $phoneError = " Entrez un numéro valide svp!";
-            $isSucces = false;
-        }
-        else{
-            $emailText .= "Phone: $phone\n";
-        }
-           
-        if(empty($message)){
-            $messageError = " Entrez un message valide svp!";
-            $isSucces = false;
-        }
-        else{
-            $emailText .= "Message: $message\n";
-        }
-           
-        if($isSucces){
-            $headers = "From: $firstname $name <$email>\r\nReply-To: $email";
-            mail($emailTo, "Message de votre site",$emailText, $headers);
+$firstname = $name = $email = $phone = $message = "";
+$firstnameError = $nameError = $emailError = $phoneError = $messageError = "";
+$isSuccess = false;
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $firstname = verifyInput($_POST["firstname"]);
+    $name = verifyInput($_POST["name"]);
+    $email = verifyInput($_POST["email"]);
+    $phone = verifyInput($_POST["phone"]);
+    $message = verifyInput($_POST["message"]);
+    $isSuccess = true;
+
+    if (empty($firstname)) {
+        $firstnameError = "Entrez un prénom correct svp!";
+        $isSuccess = false;
+    }
+
+    if (empty($name)) {
+        $nameError = "Entrez un nom correct svp!";
+        $isSuccess = false;
+    }
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $emailError = "Entrez un email valide svp!";
+        $isSuccess = false;
+    }
+
+    if (!preg_match("/^[0-9 ]*$/", $phone)) {
+        $phoneError = "Entrez un numéro valide svp!";
+        $isSuccess = false;
+    }
+
+    if (empty($message)) {
+        $messageError = "Entrez un message valide svp!";
+        $isSuccess = false;
+    }
+
+    if ($isSuccess) {
+        $mail = new PHPMailer(true);
+
+        try {
+            $mail->isSMTP();
+            $mail->Host       = 'sandbox.smtp.mailtrap.io';  // Serveur SMTP de Gmail
+            $mail->SMTPAuth   = true;
+            $mail->Username   = '49429722020f29';  // Votre adresse e-mail Gmail
+            $mail->Password   = '2f094b8a8eee8c';  // Votre mot de passe Gmail
+            $mail->SMTPSecure = 'tls';
+            $mail->Port       = 2525;
+
+            $mail->setFrom($email, $firstname . ' ' . $name);
+            $mail->addAddress('yadou471@gmail.com');
+
+            $mail->isHTML(false);
+            $mail->Subject = 'Message de votre site';
+            $mail->Body    = "Firstname: $firstname\nName: $name\nEmail: $email\nPhone: $phone\nMessage: $message";
+
+            if ($mail->send()) {
+                $isSuccess = true;
+            } else {
+                $isSuccess = false;
+                echo 'Erreur lors de l\'envoi du message. ' . $mail->ErrorInfo;
+            }
+
+            // Réinitialise les champs après l'envoi
             $firstname = $name = $email = $phone = $message = "";
+        } catch (Exception $e) {
+            echo "Erreur lors de l'envoi du message. " . $e->getMessage();
         }
+    }
+}
 
-    }
-    function isEmail($var){
-        return filter_var($var, FILTER_VALIDATE_EMAIL);
-    }
-    function isPhone($var){
-        return preg_match("/^[0-9 ]*$/",$var);
-    }
-    function verifyInput($var)
-    {
-        $var = trim($var);
-        $var = stripcslashes($var);
-        $var = htmlspecialchars($var);
+function verifyInput($var)
+{
+    $var = trim($var);
+    $var = stripslashes($var);
+    $var = htmlspecialchars($var);
 
-        return $var;
-    }
+    return $var;
+}
 ?>
+
 <!DOCTYPE html>
 <html lang="fr">
     <head>
@@ -88,7 +98,6 @@
         <link rel="stylesheet" href="css/style.css">
         <script src="js/script.js"></script>
     </head>
-    
     
     <body>
         
@@ -124,7 +133,7 @@
                             </div>
                             <div class="col-md-12">
                                 <label for="message">Message <span class="blue">*</span></label>
-                                <textarea id="message" name="message" class="form-control" placeholder="Votre Message" rows="4"><?php echo $firstname ?></textarea>
+                                <textarea id="message" name="message" class="form-control" placeholder="Votre Message" rows="4"><?php echo $message ?></textarea>
                                 <p class="comments"><?php echo $messageError ?></p>
                             </div>
                             <div class="col-md-12">
@@ -134,12 +143,11 @@
                                 <input type="submit" class="button1" value="Envoyer">
                             </div>    
                         </div>
-                        <p class="thank-you" style="display:<?php if ($isSucces) echo "block"; else echo  "none" ?>> Votre nessage a bien été envoyé. Merci de m'avoir contacté :)</p>
+                        <p class="thank-you" style="display:<?php if ($isSuccess) echo "block"; else echo  "none" ?>">Votre message a bien été envoyé. Merci de m'avoir contacté :)</p>
                     </form>
                 </div>
            </div>
         </div>
         
     </body>
-
 </html>
